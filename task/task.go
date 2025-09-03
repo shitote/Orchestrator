@@ -13,7 +13,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
-	"github.com/opencontainers/image-spec/specs-go"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 type State int
@@ -84,3 +84,15 @@ func (d *Docker) Run() DockerResult {
 	io.Copy(os.Stdout, reader)
 	return DockerResult{}
 }
+
+type Client struct {
+    *client.Client
+}
+
+func (cli *Client) ContainerCreate(
+ctx context.Context,
+config *container.Config,
+hostConfig *container.HostConfig,
+networkingConfig *network.NetworkingConfig,
+platform *specs.Platform,
+containerName string) (container.CreateResponse, error)
