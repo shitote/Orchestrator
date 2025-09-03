@@ -5,12 +5,12 @@ import (
 	"orchestrator/task"
 
 	"github.com/docker/distribution/uuid"
-	"github.com/docker/docker/libcontainerd/queue"
+	"github.com/golang-collections/collections/queue"
 )
 
 type Manager struct {
 	Pending queue.Queue
-	TasjDb map[string][]task.Task
+	TaskDb map[string][]task.Task
 	EventDb map[string][]task.TaskEvent
 	Workers []string
 	WorkerTaskMap map[string][]uuid.UUID
@@ -21,7 +21,7 @@ func (m *Manager) SelectWorker() {
 	fmt.Println("I will select an approproate workde")
 }
 
-func (m *Manager) UpdateTask() {
+func (m *Manager) UpdateTasks() {
 	fmt.Println("I will update the tasls")
 }
 

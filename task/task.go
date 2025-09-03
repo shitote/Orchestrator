@@ -1,10 +1,19 @@
 package task
 
 import (
+	"context"
+	"io"
+	"log"
+	"os"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
+	"github.com/opencontainers/image-spec/specs-go"
 )
 
 type State int
@@ -20,12 +29,12 @@ const (
 type Task struct {
 	ID uuid.UUID
 	Name string
-	state State
+	State State
 	Image string
-	Memoru int
+	Memory int
 	Disk int
 	ExposedPorts nat.PortSet
-	portBindings map[string]string
+	PortBindings map[string]string
 	RestartPolicy string
 	StartTime time.Time
 	FInishTIme time.Time
@@ -36,4 +45,42 @@ type TaskEvent struct {
 	State State
 	TimeStamp time.Time
 	Task Task
+}
+
+type Config struct {
+	Name string
+	AttachStdin bool
+	AttachStdout bool
+	AttachStderr bool
+	Cmd []string
+	Image string
+	Memory int64
+	Disk int64
+	Env []string
+	RestartPolicy string
+}
+
+type Docker struct {
+	Client *client.Client
+	Config Config
+	ContainerId string
+}
+
+type DockerResult struct {
+	Error error
+	Action string
+	ContainerId string
+	Result string
+}
+
+func (d *Docker) Run() DockerResult {
+	ctx := context.Background()
+	reader, err := d.Client.ImagePull(
+		ctx, d.Config.Image, image.PullOptions{})
+	if err != nil {
+		log.Printf("Error pulling image %s: %v\n", d.Config.Image, err)
+		return DockerResult{Error: err}
+	}
+	io.Copy(os.Stdout, reader)
+	return DockerResult{}
 }

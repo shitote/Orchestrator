@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"orchestrator/task"
 
-	"github.com/docker/docker/libcontainerd/queue"
+	"github.com/golang-collections/collections/queue"
 	"github.com/google/uuid"
 )
 
@@ -16,7 +16,7 @@ type Worker struct {
 	TaskCount int
 }
 
-func (w *Worker) CollecStats() {
+func (w *Worker) CollectStats() {
 	fmt.Println("I eill collect stats")
 }
 
