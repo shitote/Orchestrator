@@ -2,21 +2,18 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/integration-cli/cli"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 type State int
@@ -136,14 +133,24 @@ func (d *Docker) Run() DockerResult {
 	}
 }
 
+func (d *Docker) Stop(id string) DockerResult{
+	log.Printf("Attempting to stop container %v", id)
+	ctx := context.Background()
+	err := d.Client.ContainerStop(ctx, id, container.StopOptions{})
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+
+	err = d.Client.ContainerRemove(ctx, id, container.RemoveOptions{RemoveVolumes: true, RemoveLinks: false, Force: false})
+	if err != nil {
+		panic(err)
+	}
+
+	return DockerResult{Action: "stop", Result: "Success", Error: nil}
+}
+
 type Client struct {
     *client.Client
 }
 
-func (cli *Client) ContainerCreate(
-	ctx context.Context,
-	config *container.Config,
-	hostConfig *container.HostConfig,
-	networkingConfig *network.NetworkingConfig,
-	platform *specs.Platform,
-containerName string) (container.CreateResponse, error)
