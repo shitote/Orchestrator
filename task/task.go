@@ -7,10 +7,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/integration-cli/cli"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -82,7 +85,55 @@ func (d *Docker) Run() DockerResult {
 		return DockerResult{Error: err}
 	}
 	io.Copy(os.Stdout, reader)
-	return DockerResult{}
+
+	rp := container.RestartPolicy{
+		Name: container.RestartPolicyMode(d.Config.RestartPolicy),
+	}
+
+	r := container.Resources{
+		Memory: d.Config.Memory,
+	}
+
+	cc := container.Config{
+		Image: d.Config.Image,
+		Env: d.Config.Env,
+	}
+
+	hc := container.HostConfig{
+		RestartPolicy: rp,
+		Resources: r,
+		PublishAllPorts: true,
+	}
+
+	resp, err := d.Client.ContainerCreate(ctx, &cc, &hc, nil, nil, d.Config.Name)
+	if err != nil {
+		log.Panicf("Error creating container using image %s: %v\n", d.Config.Image, err)
+		return DockerResult{Error: err}
+	}
+	err = d.Client.ContainerStart(ctx, resp.ID, container.StartOptions{})
+	if err != nil {
+		log.Printf("Error starting container %s: %v\n", resp.ID, err)
+		return DockerResult{Error: err}
+	}
+
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		log.Printf("Error creatign tthe cli for ontainer %s: %v\n", resp.ID, err)
+		return DockerResult{Error: err}
+	}
+
+	out, err := cli.ContainerLogs(ctx, resp.ID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+	if err != nil {
+		log.Printf("Error getting logs for container %s: %v\n", resp.ID, err)
+		return DockerResult{Error: err}
+	}
+	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+
+	return DockerResult{
+		ContainerId: resp.ID,
+		Action: "start",
+		Result: "success",
+	}
 }
 
 type Client struct {
@@ -90,9 +141,9 @@ type Client struct {
 }
 
 func (cli *Client) ContainerCreate(
-ctx context.Context,
-config *container.Config,
-hostConfig *container.HostConfig,
-networkingConfig *network.NetworkingConfig,
-platform *specs.Platform,
+	ctx context.Context,
+	config *container.Config,
+	hostConfig *container.HostConfig,
+	networkingConfig *network.NetworkingConfig,
+	platform *specs.Platform,
 containerName string) (container.CreateResponse, error)
